@@ -1,0 +1,170 @@
+/* ====== Act Selector ====== */
+.stage-ui-acts {
+  position: fixed;
+  top: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.stage-ui-label {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-brass-gold);
+  opacity: 0.9;
+  text-shadow: 0 0 8px rgba(196, 149, 58, 0.6);
+}
+
+.stage-ui-act-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.stage-ui-act-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.5rem 1.2rem;
+  background: rgba(10, 16, 24, 0.6);
+  border: 1px solid rgba(196, 149, 58, 0.12);
+  border-radius: 3px;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: inherit;
+  font-family: inherit;
+}
+
+.stage-ui-act-btn:hover {
+  background: rgba(196, 149, 58, 0.08);
+  border-color: rgba(196, 149, 58, 0.3);
+}
+
+.stage-ui-act-btn--active {
+  background: rgba(196, 149, 58, 0.18);
+  border-color: rgba(196, 149, 58, 0.6);
+  box-shadow: 0 2px 16px rgba(196, 149, 58, 0.35), 0 0 6px rgba(196, 149, 58, 0.2) inset;
+}
+
+.stage-ui-act-name {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #f5ead8;
+  text-shadow: 0 0 6px rgba(245, 234, 216, 0.4);
+}
+
+.stage-ui-act-btn--active .stage-ui-act-name {
+  color: #f0c04a;
+  text-shadow: 0 0 10px rgba(240, 192, 74, 0.7), 0 0 20px rgba(240, 192, 74, 0.3);
+}
+
+.stage-ui-act-sub {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  font-weight: 300;
+  color: #d4c4a8;
+  opacity: 0.85;
+  text-shadow: 0 0 4px rgba(212, 196, 168, 0.3);
+}
+
+/* ====== Tooltip ====== */
+.stage-ui-tooltip {
+  position: fixed;
+  bottom: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.8rem 1.5rem;
+  background: rgba(6, 10, 18, 0.92);
+  border: 1px solid rgba(196, 149, 58, 0.35);
+  border-radius: 3px;
+  backdrop-filter: blur(10px);
+  max-width: 400px;
+  text-align: center;
+  pointer-events: none;
+  animation: tooltipIn 0.25s ease;
+}
+
+@keyframes tooltipIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.stage-ui-tooltip-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff8ec;
+  text-shadow: 0 0 12px rgba(255, 248, 236, 0.5), 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.stage-ui-tooltip-desc {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 300;
+  line-height: 1.5;
+  color: #e0d4bc;
+  opacity: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.stage-ui-tooltip-cue {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  color: #f0c04a;
+  opacity: 1;
+  margin-top: 0.2rem;
+  text-shadow: 0 0 8px rgba(240, 192, 74, 0.6);
+}
+
+/* ====== Hint ====== */
+.stage-ui-hint {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: #f0e6cc;
+  opacity: 1;
+  pointer-events: none;
+  letter-spacing: 0.08em;
+  text-shadow:
+    0 0 12px rgba(196, 149, 58, 0.8),
+    0 0 24px rgba(196, 149, 58, 0.4),
+    0 1px 4px rgba(0, 0, 0, 0.95);
+  background: rgba(6, 10, 16, 0.55);
+  padding: 0.35rem 1rem;
+  border-radius: 3px;
+  border: 1px solid rgba(196, 149, 58, 0.2);
+  white-space: nowrap;
+}
+
+/* ====== Responsive ====== */
+@media (max-width: 768px) {
+  .stage-ui-act-btn {
+    padding: 0.4rem 0.8rem;
+  }
+  .stage-ui-act-name {
+    font-size: 0.75rem;
+  }
+  .stage-ui-tooltip {
+    max-width: 85vw;
+    bottom: 2rem;
+  }
+}

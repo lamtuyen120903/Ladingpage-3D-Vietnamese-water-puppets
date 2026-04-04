@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+.env
+.env.*
+!.env.example
+san_khau_mua_roi/
+.claude/
+package-lock.json

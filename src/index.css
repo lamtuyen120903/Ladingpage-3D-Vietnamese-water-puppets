@@ -1,0 +1,56 @@
+:root {
+  /* Water puppet theater palette */
+  --color-deep-teal: #000000;
+  --color-dark-jade: #0a1228;
+  --color-teal-accent: #1a4a4a;
+  --color-crimson-lacquer: #7a2020;
+  --color-brass-gold: #c4953a;
+  --color-warm-gold: #d4a94a;
+  --color-wood-brown: #5c3a1e;
+  --color-warm-cream: #f0e6d3;
+  --color-soft-cream: #e8dcc8;
+  --color-mist: rgba(232, 220, 200, 0.04);
+
+  /* Typography */
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background: #f5ead4;
+  color: var(--color-warm-cream);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--color-brass-gold);
+  color: var(--color-deep-teal);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #f5ead4;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(196, 149, 58, 0.2);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(196, 149, 58, 0.4);
+}
