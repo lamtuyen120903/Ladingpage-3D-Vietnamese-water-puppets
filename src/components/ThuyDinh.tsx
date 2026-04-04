@@ -89,35 +89,7 @@ export default function ThuyDinh() {
       {/* ===== CUNG ĐÌNH — Thăng Long water puppet theater (reference-accurate) ===== */}
       <group position={[0, -0.6, 0.5]} scale={[1.3, 1, 1]}>
 
-      {/* === DARK BACKDROP === */}
-      <mesh position={[0, 2.5, -1.2]} material={curtainBlueDark}>
-        <boxGeometry args={[8, 6, 0.08]} />
-      </mesh>
 
-      {/* === DARK TEAL CURTAINS hanging behind building === */}
-      {[-2.5, -1.5, -0.5, 0.5, 1.5, 2.5].map((x, i) => (
-        <mesh key={`crt-${i}`} position={[x, 2.5, -0.6]} material={curtainBlue}>
-          <boxGeometry args={[0.9, 3.5, 0.03]} />
-        </mesh>
-      ))}
-      {/* Curtain folds — slight depth variation */}
-      {[-2, -1, 0, 1, 2].map((x, i) => (
-        <mesh key={`cfold-${i}`} position={[x, 2.5, -0.55]} material={curtainBlueDark}>
-          <boxGeometry args={[0.15, 3.5, 0.02]} />
-        </mesh>
-      ))}
-
-      {/* === LOWER WALL — gray stone with red dragon band (like reference) === */}
-      {/* Main stone wall */}
-      <mesh position={[0, 1, 0.9]} material={stoneGray}>
-        <boxGeometry args={[6.2, 2, 0.12]} />
-      </mesh>
-      {/* Stone wall texture — vertical panel lines */}
-      {[-2.6, -1.3, 0, 1.3, 2.6].map((x, i) => (
-        <mesh key={`sline-${i}`} position={[x, 1, 0.97]} material={stoneDark}>
-          <boxGeometry args={[0.03, 1.9, 0.01]} />
-        </mesh>
-      ))}
 
       {/* RED DRAGON BAND — horizontal red strip with gold dragons (center of wall) */}
       <mesh position={[0, 1.1, 0.97]} material={redPanel}>
@@ -356,29 +328,6 @@ export default function ThuyDinh() {
         </mesh>
       </group>
 
-      {/* ===== SIDE BALUSTRADES — stone railings extending forward ===== */}
-      {[-3.3, 3.3].map((x, i) => (
-        <group key={`balustrade-${i}`} position={[x, 0.4, 2.5]}>
-          {/* Top rail */}
-          <mesh material={stoneBase}><boxGeometry args={[0.12, 0.06, 3]} /></mesh>
-          {/* Bottom rail */}
-          <mesh position={[0, -0.4, 0]} material={stoneBase}><boxGeometry args={[0.1, 0.05, 3]} /></mesh>
-          {/* Vertical balusters */}
-          {Array.from({ length: 10 }).map((_, bi) => (
-            <mesh key={`blst-${bi}`} position={[0, -0.2, -1.3 + bi * 0.29]} material={stoneGray}>
-              <boxGeometry args={[0.04, 0.35, 0.06]} />
-            </mesh>
-          ))}
-          {/* End post */}
-          <mesh position={[0, -0.1, 1.5]} material={stoneDark}>
-            <boxGeometry args={[0.12, 0.5, 0.12]} />
-          </mesh>
-          {/* Dragon/ornament on post top */}
-          <mesh position={[0, 0.18, 1.5]} material={stoneGray}>
-            <sphereGeometry args={[0.08, 32, 24]} />
-          </mesh>
-        </group>
-      ))}
 
       </group>
       {/* ===== SIDE PLATFORMS (wings) — beside the water pool ===== */}
