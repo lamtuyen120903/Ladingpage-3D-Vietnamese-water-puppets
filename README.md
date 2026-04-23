@@ -1,39 +1,40 @@
-# Portfolio — Múa Rối Nước
+# Portfolio — Vietnamese Water Puppets
 
-Website portfolio cá nhân lấy cảm hứng từ **Múa Rối Nước** — một nghệ thuật truyền thống đặc sắc của Việt Nam.
+A personal portfolio website inspired by **Vietnamese Water Puppets (Múa Rối Nước)** — a distinctive traditional art form of Vietnam.
 
-## Giới thiệu
+## About
 
-Đây là portfolio của tôi, được thiết kế và phát triển bởi chính mình. Nội dung chia thành 3 phần chính:
+This is my portfolio, designed and developed by myself. The content is organized into three main sections:
 
-- **Analysis** — Các dự án phân tích dữ liệu, nghiên cứu
-- **Automation** — Các giải pháp tự động hóa quy trình
-- **AI** — Các ứng dụng và dự án liên quan đến trí tuệ nhân tạo
+- **Analysis** — Data analysis projects and research
+- **Automation** — Process automation solutions
+- **AI** — Artificial intelligence applications and projects
 
-Giao diện được xây dựng với Three.js, React và thư viện animation tạo nên trải nghiệm 3D tương tác.
+The interface is built with Three.js, React, and animation libraries to deliver an interactive 3D experience.
 
-## ⚠️ Lưu ý
+## ⚠️ Note
 
-**Bản hiện tại đang trong quá trình chỉnh sửa và phát triển thêm.** Một số tính năng có thể chưa hoàn thiện, nội dung có thể thay đổi.
+**The current version is under active development.** Some features may be incomplete and content is subject to change.
 
-## Video Demo
+## Demo Video
+
+## Demo Video
 
 https://github.com/user-attachments/assets/36dc0ad3-f0c2-46ac-a432-a7c8e20f2168
 
-
-## Công nghệ sử dụng
+## Tech Stack
 
 - React + TypeScript
 - Three.js / React Three Fiber
 - Vite
 
-## Chạy project
+## Getting Started
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Liên hệ
+## Contact
 
 Website: https://github.com/lamtuyen120903/my_porfolio
