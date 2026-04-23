@@ -4,6 +4,10 @@ import * as THREE from 'three'
 
 const vertexShader = `
   uniform float uTime;
+  uniform vec3 uRipplePos1;
+  uniform vec3 uRipplePos2;
+  uniform vec3 uRipplePos3;
+  uniform float uRippleStrength;
   varying vec2 vUv;
   varying float vWaveHeight;
 
@@ -18,6 +22,16 @@ const vertexShader = `
                mix(dot(hash(i+vec2(0,1)),f-vec2(0,1)), dot(hash(i+vec2(1,1)),f-vec2(1,1)),u.x),u.y);
   }
 
+  // Ripple function — circular waves from puppet positions
+  float ripple(vec3 pos, vec3 rippleCenter, float t) {
+    float dist = length(pos.xz - rippleCenter.xz);
+    float speed = 2.5;
+    float wavelength = 0.8;
+    float rippleWave = sin(dist * (6.28 / wavelength) - t * speed) * 0.015;
+    float fade = smoothstep(3.0, 0.3, dist);
+    return rippleWave * fade;
+  }
+
   void main() {
     vUv = uv;
     vec3 pos = position;
@@ -28,7 +42,13 @@ const vertexShader = `
     float r = noise(pos.xz*3.0+t*0.4)*0.012;
     float d = length(pos.xz-vec2(0.0,1.0));
     float cr = sin(d*6.0-t*1.5)*0.008*smoothstep(3.0,0.5,d);
-    float total = w1+w2+w3+r+cr;
+
+    // Puppet position ripples — water disturbance from puppet emergence
+    float rip1 = ripple(pos, uRipplePos1, t);
+    float rip2 = ripple(pos, uRipplePos2, t);
+    float rip3 = ripple(pos, uRipplePos3, t);
+
+    float total = w1+w2+w3+r+cr + (rip1 + rip2 + rip3) * uRippleStrength;
     pos.y += total;
     vWaveHeight = total;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos,1.0);
@@ -100,9 +120,38 @@ const fragmentShader = `
 
 export default function WaterSurface() {
   const ref = useRef<THREE.Mesh>(null)
-  const uniforms = useMemo(() => ({ uTime: { value: 0 } }), [])
+  const uniforms = useMemo(() => ({
+    uTime: { value: 0 },
+    uRipplePos1: { value: new THREE.Vector3(0, -0.5, 0) },
+    uRipplePos2: { value: new THREE.Vector3(1.5, -0.5, -1) },
+    uRipplePos3: { value: new THREE.Vector3(-1.5, -0.5, -1) },
+    uRippleStrength: { value: 0.0 },
+  }), [])
 
-  useFrame(({ clock }) => { uniforms.uTime.value = clock.getElapsedTime() })
+  // Animate ripple strength for puppet emergence effect
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime()
+    uniforms.uTime.value = t
+    // Pulse ripple strength to simulate puppet splashes
+    const pulse = Math.sin(t * 3.0) * 0.3 + 0.7
+    uniforms.uRippleStrength.value = pulse
+    // Move ripple positions in circular patterns
+    uniforms.uRipplePos1.value.set(
+      Math.sin(t * 0.7) * 2.0,
+      -0.5,
+      Math.cos(t * 0.5) * 1.5 - 1
+    )
+    uniforms.uRipplePos2.value.set(
+      Math.cos(t * 0.6) * 2.5,
+      -0.5,
+      Math.sin(t * 0.8) * 2.0 - 1
+    )
+    uniforms.uRipplePos3.value.set(
+      Math.sin(t * 0.9 + 2) * 1.8,
+      -0.5,
+      Math.cos(t * 0.7 + 1) * 1.8 - 1
+    )
+  })
 
   const poolW = 8
   const poolD = 10.5

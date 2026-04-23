@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from 'react'
+import { useRef, useMemo, useState, useCallback } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -13,6 +13,10 @@ export interface PuppetConfig {
   animation: string
   animationSpeed: number
   animationOffset: number
+  /** Index within the group — used for staggered entrance */
+  groupIndex?: number
+  /** Total puppets in the group */
+  groupTotal?: number
 }
 
 interface Props {
@@ -27,8 +31,10 @@ export default function Puppet({ config, highlighted, onClick, onHover }: Props)
   const armLRef = useRef<THREE.Group>(null)
   const armRRef = useRef<THREE.Group>(null)
   const [hovered, setHovered] = useState(false)
+  const [performing, setPerforming] = useState(false)
+  const performStartRef = useRef(0)
 
-  const glow = highlighted || hovered
+  const glow = highlighted || hovered || performing
 
   // === Materials — bright & vivid ===
   const skinMat = useMemo(() => new THREE.MeshStandardMaterial({
@@ -121,8 +127,196 @@ export default function Puppet({ config, highlighted, onClick, onHover }: Props)
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return
-    const t = clock.getElapsedTime() * config.animationSpeed + config.animationOffset
+    const elapsed = clock.getElapsedTime()
+    const t = elapsed * config.animationSpeed + config.animationOffset
     const g = groupRef.current
+
+    // === PERFORMANCE khi click — trước khi show modal ===
+    if (performing) {
+      if (performStartRef.current < 0) performStartRef.current = elapsed
+      const pt = elapsed - performStartRef.current
+      const baseY = config.position[1]
+      const baseX = config.position[0]
+      const isIntro = config.id.startsWith('intro')
+
+      if (isIntro) {
+        // ===== MÀN GIỚI THIỆU — múa rối nước truyền thống =====
+
+        // 1. EMERGENCE — trồi lên từ dưới nước (0–1.2s)
+        if (pt < 1.2) {
+          const rise = Math.min(pt / 1.0, 1)
+          const eased = rise * rise * (3 - 2 * rise)
+          g.position.y = baseY - 0.5 + eased * 0.5
+          g.position.x = baseX
+          g.rotation.set(0, 0, 0)
+          g.rotation.z = Math.sin(pt * 8) * 0.02 * (1 - eased)
+          if (armLRef.current) armLRef.current.rotation.z = 0.1
+          if (armRRef.current) armRRef.current.rotation.z = -0.1
+        }
+        // 2. NHÚN CHÀO — signature puppet bow (1.2–2.8s)
+        else if (pt < 2.8) {
+          const p2 = pt - 1.2
+          g.position.x = baseX
+          g.rotation.z = 0
+          let dip = 0
+          if (p2 < 0.3) { dip = (p2 / 0.3) * 0.08 }
+          else if (p2 < 0.5) { dip = 0.08 }
+          else if (p2 < 0.9) { dip = 0.08 + ((p2 - 0.5) / 0.4) * 0.12 }
+          else if (p2 < 1.2) { dip = 0.2 }
+          else { const up = Math.min((p2 - 1.2) / 0.4, 1); dip = 0.2 * (1 - up * up) }
+          g.position.y = baseY - dip
+          g.rotation.x = dip * 1.2
+          if (armLRef.current) armLRef.current.rotation.z = dip * 2
+          if (armRRef.current) armRRef.current.rotation.z = -dip * 2
+        }
+        // 3. XOAY KHỰNG — jerky rotation (2.8–3.8s)
+        else if (pt < 3.8) {
+          const p3 = pt - 2.8
+          g.position.x = baseX; g.position.y = baseY; g.rotation.x = 0
+          if (p3 < 0.2) { g.rotation.y = -(p3 / 0.2) * 0.26 }
+          else if (p3 < 0.4) { g.rotation.y = -0.26 }
+          else if (p3 < 0.6) { g.rotation.y = -0.26 + ((p3 - 0.4) / 0.2) * 0.52 }
+          else if (p3 < 0.8) { g.rotation.y = 0.26 }
+          else { g.rotation.y = 0.26 * (1 - Math.min((p3 - 0.8) / 0.2, 1)) }
+          if (armLRef.current) armLRef.current.rotation.z = 0.15
+          if (armRRef.current) armRRef.current.rotation.z = -0.15
+        }
+        // 4. TAY VẪY — jerky arm wave (3.8–4.6s)
+        else if (pt < 4.6) {
+          const p4 = pt - 3.8
+          g.position.x = baseX; g.position.y = baseY; g.rotation.set(0, 0, 0)
+          let a = 0
+          if (p4 < 0.15) { a = (p4 / 0.15) * 0.8 }
+          else if (p4 < 0.25) { a = 0.8 }
+          else if (p4 < 0.4) { a = 0.8 - ((p4 - 0.25) / 0.15) * 0.8 }
+          else if (p4 < 0.5) { a = 0 }
+          else if (p4 < 0.65) { a = ((p4 - 0.5) / 0.15) * 0.8 }
+          else if (p4 < 0.75) { a = 0.8 }
+          else { a = 0.8 * Math.max(0, 1 - (p4 - 0.75) / 0.05) }
+          if (armLRef.current) armLRef.current.rotation.z = a
+          if (armRRef.current) armRRef.current.rotation.z = -0.1
+          g.rotation.z = a * 0.05
+        }
+        // 5. IDLE — float chờ modal (4.6–5s)
+        else {
+          const p5 = pt - 4.6
+          g.position.x = baseX
+          g.position.y = baseY + Math.sin(p5 * 3) * 0.015
+          g.rotation.x = 0
+          g.rotation.y = Math.sin(p5 * 1.5) * 0.04
+          g.rotation.z = Math.sin(p5 * 2) * 0.015
+          if (armLRef.current) armLRef.current.rotation.z = Math.sin(p5 * 2) * 0.08
+          if (armRRef.current) armRRef.current.rotation.z = -Math.sin(p5 * 2 + 1) * 0.08
+        }
+
+      } else {
+        // ===== MÀN 2/3 (Automation, AI) — đội hình rối nước =====
+        const idx = config.groupIndex ?? 0
+        const total = config.groupTotal ?? 1
+        const delay = idx * 0.3 // staggered entrance
+        const apt = pt - delay // adjusted time after this puppet's delay
+
+        if (apt < 0) {
+          // Chưa đến lượt — ẩn dưới nước
+          g.position.y = baseY - 0.6
+          g.position.x = baseX
+          return
+        }
+
+        // 1. XUẤT HIỆN THEO NHỊP (0–0.8s mỗi con, staggered)
+        if (apt < 0.8) {
+          const rise = Math.min(apt / 0.7, 1)
+          const eased = rise * rise * (3 - 2 * rise)
+          g.position.y = baseY - 0.5 + eased * 0.5
+          g.position.x = baseX
+          g.rotation.set(0, 0, 0)
+          g.rotation.z = Math.sin(apt * 10) * 0.02 * (1 - eased)
+          if (armLRef.current) armLRef.current.rotation.z = 0.1
+          if (armRRef.current) armRRef.current.rotation.z = -0.1
+        }
+
+        // 2. NHÚN ĐỒNG BỘ (0.8–2s) — tất cả cùng nhún
+        else if (apt < 2) {
+          const p2 = apt - 0.8
+          g.position.x = baseX
+          g.rotation.y = 0; g.rotation.z = 0
+          let dip = 0
+          if (p2 < 0.25) { dip = (p2 / 0.25) * 0.12 } // xuống
+          else if (p2 < 0.4) { dip = 0.12 } // dừng
+          else if (p2 < 0.6) { dip = 0.12 * (1 - (p2 - 0.4) / 0.2) } // lên
+          else if (p2 < 0.75) { dip = 0 } // dừng
+          else if (p2 < 1.0) { dip = ((p2 - 0.75) / 0.25) * 0.08 } // xuống nhẹ
+          else { dip = 0.08 * (1 - Math.min((p2 - 1.0) / 0.2, 1)) } // lên
+          g.position.y = baseY - dip
+          g.rotation.x = dip * 1.0
+          if (armLRef.current) armLRef.current.rotation.z = dip * 1.5
+          if (armRRef.current) armRRef.current.rotation.z = -dip * 1.5
+        }
+
+        // 3. DI CHUYỂN THEO CUNG TRÒN (2–3.5s)
+        else if (apt < 3.5) {
+          const p3 = apt - 2
+          const progress = p3 / 1.5
+          // Mỗi con đi 1 cung khác nhau dựa trên index
+          const arcAngle = progress * Math.PI * 0.8 // cung ~144°
+          const arcOffset = (idx / Math.max(total - 1, 1)) * Math.PI * 2 // spread
+          const radius = 0.8 + idx * 0.15
+          g.position.x = baseX + Math.sin(arcOffset + arcAngle) * radius - Math.sin(arcOffset) * radius
+          g.position.z = config.position[2] + Math.cos(arcOffset + arcAngle) * radius * 0.3 - Math.cos(arcOffset) * radius * 0.3
+          g.position.y = baseY + Math.sin(p3 * 4) * 0.02
+          g.rotation.y = arcAngle * 0.5 * (idx % 2 === 0 ? 1 : -1)
+          g.rotation.x = 0; g.rotation.z = 0
+          if (armLRef.current) armLRef.current.rotation.z = 0.2 + Math.sin(p3 * 5) * 0.2
+          if (armRRef.current) armRRef.current.rotation.z = -0.2 - Math.sin(p3 * 5 + 1) * 0.2
+        }
+
+        // 4. GIAO NHAU — 2 con cắt nhau chậm + pause (3.5–4.3s)
+        else if (apt < 4.3) {
+          const p4 = apt - 3.5
+          const crossDir = idx % 2 === 0 ? 1 : -1
+          let crossX = 0
+          if (p4 < 0.3) {
+            crossX = (p4 / 0.3) * 0.4 * crossDir // đi sang
+          } else if (p4 < 0.45) {
+            crossX = 0.4 * crossDir // pause giữa đường
+          } else {
+            crossX = 0.4 * crossDir * (1 - Math.min((p4 - 0.45) / 0.35, 1)) // quay về
+          }
+          g.position.x = baseX + crossX
+          g.position.z = config.position[2]
+          g.position.y = baseY + Math.sin(p4 * 3) * 0.015
+          g.rotation.y = crossX * 0.3
+          g.rotation.x = 0; g.rotation.z = 0
+          if (armLRef.current) armLRef.current.rotation.z = 0.15
+          if (armRRef.current) armRRef.current.rotation.z = -0.15
+        }
+
+        // 5. HIGHLIGHT POSE — nhún mạnh + xoay về camera (4.3–5s)
+        else {
+          const p5 = apt - 4.3
+          g.position.x = baseX
+          g.position.z = config.position[2]
+          // Nhún mạnh
+          let dip = 0
+          if (p5 < 0.2) { dip = (p5 / 0.2) * 0.15 }
+          else if (p5 < 0.35) { dip = 0.15 }
+          else { dip = 0.15 * Math.max(0, 1 - (p5 - 0.35) / 0.2) }
+          g.position.y = baseY - dip
+          // Xoay về phía camera (z+)
+          g.rotation.y *= 0.9 // ease to 0 = face camera
+          g.rotation.x = dip * 0.8
+          g.rotation.z = 0
+          if (armLRef.current) armLRef.current.rotation.z = Math.sin(p5 * 2) * 0.1
+          if (armRRef.current) armRRef.current.rotation.z = -Math.sin(p5 * 2 + 1) * 0.1
+        }
+      }
+
+      const performScale = config.scale * 1.15
+      g.scale.lerp(new THREE.Vector3(performScale, performScale, performScale), 0.08)
+      return
+    }
+
+    // === NORMAL ANIMATIONS ===
     const anim = config.animation
 
     // Water bob
@@ -155,7 +349,7 @@ export default function Puppet({ config, highlighted, onClick, onHover }: Props)
       if (armRRef.current) armRRef.current.rotation.z = -0.3 - Math.sin(t * 0.6 + 1) * 0.3
     }
 
-    const targetScale = glow ? config.scale * 1.12 : config.scale
+    const targetScale = glow ? config.scale * 1.15 : config.scale
     g.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1)
   })
 
@@ -172,10 +366,17 @@ export default function Puppet({ config, highlighted, onClick, onHover }: Props)
     document.body.style.cursor = 'default'
   }
 
-  const handleClick = (e: ThreeEvent<MouseEvent>) => {
+  const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
-    onClick?.()
-  }
+    if (performing) return
+    setPerforming(true)
+    performStartRef.current = -1 // signal to capture clock time on next frame
+
+    setTimeout(() => {
+      setPerforming(false)
+      onClick?.()
+    }, 5000)
+  }, [performing, onClick])
 
   return (
     <group
@@ -422,9 +623,9 @@ export default function Puppet({ config, highlighted, onClick, onHover }: Props)
         <cylinderGeometry args={[0.012, 0.015, 0.4, 32]} />
       </mesh>
 
-      {/* Highlight glow */}
+      {/* Highlight glow — enhanced for hover */}
       {glow && (
-        <pointLight position={[0, 0.6, 0.3]} intensity={1} color="#d4a94a" distance={2.5} decay={2} />
+        <pointLight position={[0, 0.6, 0.3]} intensity={1.5} color="#d4a94a" distance={3} decay={2} />
       )}
       {config.animation === 'glow' && (
         <pointLight position={[0, 0.5, 0]} intensity={0.5} color="#d4a94a" distance={2} decay={2} />

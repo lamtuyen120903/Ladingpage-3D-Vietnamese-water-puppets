@@ -1,6 +1,5 @@
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Suspense, useRef, useMemo } from 'react'
-import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { ActId, StagePhase } from '../App'
 import type { Project } from '../data/projects'
@@ -10,6 +9,10 @@ import PuppetGroup from './PuppetGroup'
 import StageLighting from './StageLighting'
 import AudienceSeats from './AudienceSeats'
 import TheaterFrame from './TheaterFrame'
+import EnhancedPostProcessing from './EnhancedPostProcessing'
+import WaterParticles from './WaterParticles'
+import AmbientParticles from './AmbientParticles'
+import CinematicCamera from './CinematicCamera'
 
 interface Props {
   currentAct: ActId
@@ -25,7 +28,7 @@ export default function PuppetStage({ currentAct, phase, onPuppetClick, onPuppet
       gl={{
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.4,
+        toneMappingExposure: 1.3,
       }}
       scene={{ background: new THREE.Color('#f5ead4') }}
       shadows
@@ -35,6 +38,7 @@ export default function PuppetStage({ currentAct, phase, onPuppetClick, onPuppet
       <fog attach="fog" args={['#f5ead4', 18, 45]} />
 
       <Suspense fallback={null}>
+        <CinematicCamera phase={phase} />
         <DongSonBackground />
         <StageLighting currentAct={currentAct} />
         <ThuyDinh />
@@ -47,15 +51,10 @@ export default function PuppetStage({ currentAct, phase, onPuppetClick, onPuppet
         />
         <AudienceSeats />
         <TheaterFrame />
-        {/* Post-processing: bloom for gold/emissive glow */}
-        <EffectComposer>
-          <Bloom
-            intensity={0.4}
-            luminanceThreshold={0.6}
-            luminanceSmoothing={0.9}
-            mipmapBlur
-          />
-        </EffectComposer>
+        <WaterParticles currentAct={currentAct} phase={phase} />
+        <AmbientParticles />
+        {/* Enhanced post-processing: Bloom + Vignette + ChromaticAberration */}
+        <EnhancedPostProcessing />
       </Suspense>
     </Canvas>
   )
@@ -69,6 +68,10 @@ function DongSonBackground() {
   const craneRefs = useRef<THREE.Group[]>([])
   const petalRefs = useRef<THREE.Mesh[]>([])
   const mistRef = useRef<THREE.Group>(null)
+  const villageRef = useRef<THREE.Group>(null)
+  const starFieldRef = useRef<THREE.Group>(null)
+  const lensFlareRef = useRef<THREE.Mesh>(null)
+  const parallaxRef = useRef<THREE.Group>(null)
 
   // Memoized materials — prevent recreation every render
   const mats = useMemo(() => ({
@@ -100,8 +103,10 @@ function DongSonBackground() {
     return shape
   }, [])
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     const t = clock.getElapsedTime()
+    const mouseX = camera.position.x * 0.02
+
     // Star pulse + glow
     if (starRef.current) {
       const s = 1 + Math.sin(t * 0.2) * 0.02
@@ -116,11 +121,12 @@ function DongSonBackground() {
       ribbonRef2.current.rotation.z = Math.sin(t * 0.12 + 1) * -0.018
       ribbonRef2.current.position.y = 6 + Math.sin(t * 0.13 + 2) * 0.08
     }
-    // Cloud drift + bob + pulse — 4x speed
+    // Cloud drift + bob + pulse — 4x speed with parallax
     cloudRefs.current.forEach((c, i) => {
       if (!c) return
-      c.position.x += Math.sin(t * 0.6 + i * 1.7) * 0.012
-      c.position.y += Math.cos(t * 0.8 + i * 2.3) * 0.006
+      const depth = i < 6 ? 0.005 : 0.008 // Closer clouds move faster
+      c.position.x += Math.sin(t * 0.6 + i * 1.7) * depth + mouseX * 0.002
+      c.position.y += Math.cos(t * 0.8 + i * 2.3) * 0.004
       const pulse = 1 + Math.sin(t * 1.2 + i * 1.5) * 0.06
       const sx = c.scale.x > 0 ? pulse : -pulse
       c.scale.set(sx, pulse, 1)
@@ -130,7 +136,7 @@ function DongSonBackground() {
       if (!cr) return
       const speed = 0.15 + i * 0.05
       const wingFlap = Math.sin(t * 2.5 + i * 3) * 0.25
-      cr.position.x += Math.cos(t * speed + i * 2) * 0.003
+      cr.position.x += Math.cos(t * speed + i * 2) * 0.003 + mouseX * 0.001
       cr.position.y += Math.sin(t * speed * 0.7 + i * 1.5) * 0.002
       cr.rotation.z = Math.sin(t * 0.2 + i) * 0.05
       // Flap wings via children
@@ -146,48 +152,159 @@ function DongSonBackground() {
       p.rotation.x += 0.005
       if (p.position.y < -12) p.position.y = 10 + (i % 5)
     })
-    // Mist layers drift
+    // Mist layers drift with parallax
     if (mistRef.current) {
       mistRef.current.children.forEach((m, i) => {
-        m.position.x = Math.sin(t * 0.03 + i * 1.8) * 0.5
+        m.position.x = Math.sin(t * 0.03 + i * 1.8) * 0.5 + mouseX * (0.1 + i * 0.05)
       })
+    }
+    // Village silhouettes subtle parallax
+    if (villageRef.current) {
+      villageRef.current.position.x = mouseX * 0.3
+    }
+    // Star field parallax
+    if (starFieldRef.current) {
+      starFieldRef.current.position.x = mouseX * 0.1
+      // Twinkling stars
+      starFieldRef.current.children.forEach((star, i) => {
+        if (star instanceof THREE.Mesh && star.material instanceof THREE.MeshBasicMaterial) {
+          star.material.opacity = 0.3 + Math.sin(t * 0.5 + i * 0.7) * 0.25
+        }
+      })
+    }
+    // Lens flare subtle pulse
+    if (lensFlareRef.current) {
+      lensFlareRef.current.material instanceof THREE.MeshBasicMaterial &&
+        (lensFlareRef.current.material.opacity = 0.15 + Math.sin(t * 0.3) * 0.08)
     }
   })
 
   return (
     <group position={[0, 4, -14]}>
-      {/* === CREAM PARCHMENT BACKGROUND with warm gradient === */}
+      {/* === WARM SUNSET SKY GRADIENT === */}
+      {/* Base sky layer */}
+      <mesh position={[0, 0, -0.6]}>
+        <planeGeometry args={[50, 32]} />
+        <meshBasicMaterial color="#ffd89b" />
+      </mesh>
+      {/* Sunset gradient layer 1 - warm orange */}
+      <mesh position={[0, 1, -0.58]}>
+        <planeGeometry args={[50, 32]} />
+        <meshBasicMaterial color="#f5a55a" transparent opacity={0.6} />
+      </mesh>
+      {/* Sunset gradient layer 2 - coral */}
+      <mesh position={[0, 2, -0.56]}>
+        <planeGeometry args={[50, 30]} />
+        <meshBasicMaterial color="#e87856" transparent opacity={0.5} />
+      </mesh>
+      {/* Sunset gradient layer 3 - deep rose */}
+      <mesh position={[0, 3, -0.54]}>
+        <planeGeometry args={[50, 28]} />
+        <meshBasicMaterial color="#d45a78" transparent opacity={0.45} />
+      </mesh>
+      {/* Upper sky - deep teal/sunset */}
+      <mesh position={[0, 6, -0.52]}>
+        <planeGeometry args={[50, 20]} />
+        <meshBasicMaterial color="#19547b" transparent opacity={0.7} />
+      </mesh>
+
+      {/* === TWINKLING STARS === */}
+      <group ref={starFieldRef} position={[0, 0, -0.5]}>
+        {Array.from({ length: 40 }).map((_, i) => {
+          const px = ((Math.sin(i * 137.5) * 0.5 + 0.5) * 40) - 20
+          const py = ((Math.cos(i * 73.1) * 0.5 + 0.5) * 18) + 4
+          const size = 0.02 + (i % 3) * 0.015
+          return (
+            <mesh key={`tstar-${i}`} position={[px, py, 0]}>
+              <circleGeometry args={[size, 16]} />
+              <meshBasicMaterial color="#fff8e0" transparent opacity={0.3} />
+            </mesh>
+          )
+        })}
+      </group>
+
+      {/* === LENS FLARE from sun position === */}
+      <group ref={lensFlareRef} position={[-8, 8, -0.3]}>
+        {/* Main flare glow */}
+        <mesh>
+          <circleGeometry args={[2, 64]} />
+          <meshBasicMaterial color="#ffd080" transparent opacity={0.2} />
+        </mesh>
+        {/* Inner bright core */}
+        <mesh>
+          <circleGeometry args={[0.8, 64]} />
+          <meshBasicMaterial color="#fff0c0" transparent opacity={0.35} />
+        </mesh>
+        {/* Flare streak */}
+        <mesh rotation={[0, 0, 0.5]}>
+          <planeGeometry args={[0.3, 4]} />
+          <meshBasicMaterial color="#ffd080" transparent opacity={0.1} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh rotation={[0, 0, -0.5]}>
+          <planeGeometry args={[0.3, 4]} />
+          <meshBasicMaterial color="#ffd080" transparent opacity={0.1} side={THREE.DoubleSide} />
+        </mesh>
+        {/* Small flare artifacts */}
+        {[1.5, 2.5, 3.5].map((offset, i) => (
+          <mesh key={`flare-${i}`} position={[offset, offset * 0.3, 0.01]}>
+            <circleGeometry args={[0.2 - i * 0.05, 32]} />
+            <meshBasicMaterial color="#ffe0a0" transparent opacity={0.15 - i * 0.03} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* === DISTANT VILLAGE SILHOUETTES === */}
+      <group ref={villageRef} position={[0, -4, -0.48]}>
+        {/* House shapes - simple geometric silhouettes */}
+        {[
+          [-12, 0, 0.6, 0.8], [-10, 0, 0.5, 0.7], [-8, 0, 0.7, 0.9],
+          [-5, 0, 0.55, 0.75], [-3, 0, 0.65, 0.85], [0, 0, 0.5, 0.7],
+          [3, 0, 0.6, 0.8], [5, 0, 0.7, 0.9], [8, 0, 0.55, 0.75],
+          [10, 0, 0.5, 0.7], [12, 0, 0.6, 0.8],
+        ].map(([x, y, w, h], i) => (
+          <group key={`village-${i}`} position={[x as number, y as number, 0]}>
+            {/* House body */}
+            <mesh position={[0, (h as number) / 2, 0]}>
+              <boxGeometry args={[w as number, h as number, 0.1]} />
+              <meshBasicMaterial color="#2a2520" transparent opacity={0.7} />
+            </mesh>
+            {/* Roof */}
+            <mesh position={[0, h as number + (w as number) * 0.3, 0]}>
+              <coneGeometry args={[w as number * 0.7, (w as number) * 0.5, 4]} />
+              <meshBasicMaterial color="#1a1815" transparent opacity={0.7} />
+            </mesh>
+            {/* Small window glow */}
+            {(i % 3 === 0) && (
+              <mesh position={[0, (h as number) * 0.6, 0.06]}>
+                <circleGeometry args={[0.08, 16]} />
+                <meshBasicMaterial color="#f0c850" transparent opacity={0.4} />
+              </mesh>
+            )}
+          </group>
+        ))}
+      </group>
+
+      {/* === CREAM PARCHMENT BACKGROUND (kept for compatibility) === */}
       <mesh position={[0, -1, -0.5]}>
         <planeGeometry args={[42, 28]} />
-        <meshBasicMaterial color="#f5ead4" />
+        <meshBasicMaterial color="#f5ead4" transparent opacity={0.3} />
       </mesh>
       {/* Warm center glow */}
       <mesh position={[0, 0, -0.48]}>
         <circleGeometry args={[12, 64]} />
-        <meshBasicMaterial color="#faf0dc" transparent opacity={0.5} />
+        <meshBasicMaterial color="#faf0dc" transparent opacity={0.35} />
       </mesh>
       <mesh position={[0, 0, -0.47]}>
         <circleGeometry args={[8, 64]} />
-        <meshBasicMaterial color="#fdf5e4" transparent opacity={0.4} />
+        <meshBasicMaterial color="#fdf5e4" transparent opacity={0.25} />
       </mesh>
       {/* Edge darkening vignette */}
       {[[-16, 0], [16, 0], [0, 10], [0, -10]].map(([x, y], i) => (
         <mesh key={`vig-${i}`} position={[x, y, -0.46]}>
           <circleGeometry args={[8, 64]} />
-          <meshBasicMaterial color="#e8d8b8" transparent opacity={0.3} />
+          <meshBasicMaterial color="#e8d8b8" transparent opacity={0.2} />
         </mesh>
       ))}
-      {/* Parchment texture spots */}
-      {Array.from({ length: 12 }).map((_, i) => {
-        const px = ((i * 7.3 + 3.1) % 30) - 15
-        const py = ((i * 5.7 + 1.9) % 20) - 10
-        return (
-          <mesh key={`pt-${i}`} position={[px, py, -0.45]}>
-            <circleGeometry args={[2 + (i % 3), 48]} />
-            <meshBasicMaterial color={i % 3 === 0 ? '#f0e2c4' : i % 3 === 1 ? '#f8eedc' : '#ece0c8'} transparent opacity={0.25} />
-          </mesh>
-        )
-      })}
 
       {/* === GOLDEN STAR with light rays === */}
       <mesh ref={starRef} position={[0, 0.5, -0.3]}>
@@ -465,7 +582,7 @@ function DongSonBackground() {
         ))}
       </group>
 
-      {/* === ORNATE CLOUDS — VIVID saturated blue/teal/gold with glow === */}
+      {/* === ORNATE CLOUDS — Golden folk-art style (mây vờn) === */}
       {([
         [-10, 3, 1.5, false], [9, 4, 1.3, true], [-5, 5, 1.1, false],
         [13, 1.5, 1.0, true], [-13, 1, 1.2, false], [5, 6, 0.9, true],
@@ -475,72 +592,86 @@ function DongSonBackground() {
         <group key={`oc-${i}`} position={[x, y, -0.18]}
           ref={(el: THREE.Group | null) => { if (el) cloudRefs.current[i] = el }}
           scale={[flip ? -s : s, s, 1]}>
-          {/* Core lobes — VIVID deep blue */}
+          {/* Core lobes — rich warm gold with coral/amber tints */}
           <mesh><sphereGeometry args={[0.55, 48, 36]} />
-            <meshStandardMaterial color="#1858c0" roughness={0.3}
-              emissive="#1050b0" emissiveIntensity={0.4} /></mesh>
+            <meshStandardMaterial color={['#d4a840', '#d88850', '#c8a048', '#d09848', '#d4a840', '#c89040', '#d88850', '#d4a840', '#c8a048', '#d09848', '#d4a840'][i]}
+              roughness={0.3} metalness={0.35}
+              emissive={['#b08020', '#b86830', '#a88028', '#b07828', '#b08020', '#a87020', '#b86830', '#b08020', '#a88028', '#b07828', '#b08020'][i]}
+              emissiveIntensity={0.4} /></mesh>
           <mesh position={[0.42, 0.18, 0]}><sphereGeometry args={[0.48, 48, 36]} />
-            <meshStandardMaterial color="#2070d8" roughness={0.3}
-              emissive="#1860c0" emissiveIntensity={0.38} /></mesh>
+            <meshStandardMaterial color={i % 3 === 0 ? '#e8b850' : i % 3 === 1 ? '#e09060' : '#dbb548'}
+              roughness={0.3} metalness={0.35}
+              emissive={i % 3 === 0 ? '#c89838' : i % 3 === 1 ? '#c07040' : '#b89030'}
+              emissiveIntensity={0.38} /></mesh>
           <mesh position={[-0.38, 0.12, 0]}><sphereGeometry args={[0.42, 48, 36]} />
-            <meshStandardMaterial color="#1450b8" roughness={0.3}
-              emissive="#0c40a0" emissiveIntensity={0.4} /></mesh>
+            <meshStandardMaterial color={i % 2 === 0 ? '#c89838' : '#d87848'}
+              roughness={0.3} metalness={0.35}
+              emissive={i % 2 === 0 ? '#a87820' : '#b86030'}
+              emissiveIntensity={0.4} /></mesh>
           <mesh position={[0.18, 0.38, 0]}><sphereGeometry args={[0.38, 48, 36]} />
-            <meshStandardMaterial color="#2880e0" roughness={0.28}
-              emissive="#1868c8" emissiveIntensity={0.35} /></mesh>
+            <meshStandardMaterial color="#e8c858" roughness={0.28} metalness={0.4}
+              emissive="#c8a840" emissiveIntensity={0.35} /></mesh>
           <mesh position={[-0.2, 0.35, 0]}><sphereGeometry args={[0.3, 48, 36]} />
-            <meshStandardMaterial color="#2070d0" roughness={0.3}
-              emissive="#1860b8" emissiveIntensity={0.35} /></mesh>
-          {/* Vivid teal/cyan accent lobes */}
+            <meshStandardMaterial color="#e0b848" roughness={0.3} metalness={0.35}
+              emissive="#c09830" emissiveIntensity={0.35} /></mesh>
+          {/* Coral/amber accent lobes — more colorful */}
           <mesh position={[0.68, 0.05, 0.01]}><sphereGeometry args={[0.35, 48, 36]} />
-            <meshStandardMaterial color="#30c8c0" roughness={0.3}
-              emissive="#20a8a0" emissiveIntensity={0.4} /></mesh>
+            <meshStandardMaterial color={i % 2 === 0 ? '#e8a050' : '#f0c860'}
+              roughness={0.28} metalness={0.4}
+              emissive={i % 2 === 0 ? '#c88038' : '#d0a848'}
+              emissiveIntensity={0.4} /></mesh>
           <mesh position={[-0.55, -0.08, 0.01]}><sphereGeometry args={[0.3, 48, 36]} />
-            <meshStandardMaterial color="#40d8c8" roughness={0.28}
-              emissive="#28b8a8" emissiveIntensity={0.38} /></mesh>
+            <meshStandardMaterial color={i % 3 === 1 ? '#e08858' : '#e8c060'}
+              roughness={0.28} metalness={0.38}
+              emissive={i % 3 === 1 ? '#c06838' : '#c8a048'}
+              emissiveIntensity={0.38} /></mesh>
           <mesh position={[0.08, -0.32, 0.01]}><sphereGeometry args={[0.32, 48, 36]} />
-            <meshStandardMaterial color="#38c8c0" roughness={0.3}
-              emissive="#20a8a0" emissiveIntensity={0.35} /></mesh>
+            <meshStandardMaterial color="#d8a040" roughness={0.3} metalness={0.35}
+              emissive="#b88028" emissiveIntensity={0.35} /></mesh>
           <mesh position={[0.55, 0.3, 0.01]}><sphereGeometry args={[0.25, 48, 36]} />
-            <meshStandardMaterial color="#48d8d0" roughness={0.28}
-              emissive="#30b8b0" emissiveIntensity={0.35} /></mesh>
-          {/* Bright cyan highlight spots */}
+            <meshStandardMaterial color="#f0d060" roughness={0.25} metalness={0.4}
+              emissive="#d0b048" emissiveIntensity={0.35} /></mesh>
+          {/* Bright highlight spots — warm white/cream */}
           <mesh position={[0.3, 0.42, 0.02]}><sphereGeometry args={[0.2, 48, 36]} />
-            <meshStandardMaterial color="#60f0e8" roughness={0.25}
-              emissive="#40d0c8" emissiveIntensity={0.4} transparent opacity={0.7} /></mesh>
+            <meshStandardMaterial color="#f8e070" roughness={0.22} metalness={0.45}
+              emissive="#d8c058" emissiveIntensity={0.45} transparent opacity={0.85} /></mesh>
           <mesh position={[0.72, 0.2, 0.02]}><sphereGeometry args={[0.18, 48, 36]} />
-            <meshStandardMaterial color="#58e8e0" roughness={0.25}
-              emissive="#38c8c0" emissiveIntensity={0.38} transparent opacity={0.65} /></mesh>
-          {/* Vivid GOLD swirl accents */}
+            <meshStandardMaterial color="#f0d868" roughness={0.22} metalness={0.45}
+              emissive="#d0b850" emissiveIntensity={0.4} transparent opacity={0.8} /></mesh>
+          {/* Deep amber/burnt orange shadow accents */}
           <mesh position={[-0.22, -0.18, 0.025]}><sphereGeometry args={[0.22, 48, 36]} />
-            <meshStandardMaterial color="#e8a820" roughness={0.25} metalness={0.4}
-              emissive="#c08818" emissiveIntensity={0.5} /></mesh>
+            <meshStandardMaterial color={i % 2 === 0 ? '#c07828' : '#b86830'}
+              roughness={0.35} metalness={0.3}
+              emissive={i % 2 === 0 ? '#a06018' : '#985020'}
+              emissiveIntensity={0.38} /></mesh>
           <mesh position={[-0.12, -0.22, 0.03]}><sphereGeometry args={[0.16, 48, 36]} />
-            <meshStandardMaterial color="#f0c030" roughness={0.22} metalness={0.45}
-              emissive="#d0a020" emissiveIntensity={0.45} /></mesh>
+            <meshStandardMaterial color="#d89830" roughness={0.3} metalness={0.35}
+              emissive="#b87820" emissiveIntensity={0.35} /></mesh>
           <mesh position={[-0.05, -0.24, 0.035]}><sphereGeometry args={[0.1, 48, 36]} />
-            <meshStandardMaterial color="#f8d040" roughness={0.2} metalness={0.5}
-              emissive="#d8b030" emissiveIntensity={0.5} /></mesh>
-          {/* Dark burgundy outline rings */}
+            <meshStandardMaterial color="#e8b038" roughness={0.28} metalness={0.4}
+              emissive="#c89028" emissiveIntensity={0.38} /></mesh>
+          {/* Warm brown outline rings */}
           <mesh position={[0, 0, 0.025]}><ringGeometry args={[0.5, 0.57, 48]} />
-            <meshBasicMaterial color="#701818" transparent opacity={0.25} side={THREE.DoubleSide} /></mesh>
+            <meshBasicMaterial color="#8a5818" transparent opacity={0.22} side={THREE.DoubleSide} /></mesh>
           <mesh position={[0.42, 0.18, 0.025]}><ringGeometry args={[0.43, 0.49, 48]} />
-            <meshBasicMaterial color="#701818" transparent opacity={0.22} side={THREE.DoubleSide} /></mesh>
+            <meshBasicMaterial color="#8a5818" transparent opacity={0.2} side={THREE.DoubleSide} /></mesh>
           <mesh position={[-0.22, -0.18, 0.035]}><ringGeometry args={[0.19, 0.23, 48]} />
-            <meshBasicMaterial color="#804020" transparent opacity={0.25} side={THREE.DoubleSide} /></mesh>
-          {/* Flowing swirl tail — vivid */}
+            <meshBasicMaterial color="#905820" transparent opacity={0.22} side={THREE.DoubleSide} /></mesh>
+          {/* Flowing swirl tail — warm amber gradient */}
           <mesh position={[1.0, -0.08, 0]} rotation={[0, 0, -0.12]}>
             <capsuleGeometry args={[0.1, 0.7, 16, 32]} />
-            <meshStandardMaterial color="#2078d0" roughness={0.3}
-              emissive="#1860b8" emissiveIntensity={0.35} /></mesh>
+            <meshStandardMaterial color={i % 2 === 0 ? '#d89838' : '#d08040'}
+              roughness={0.3} metalness={0.35}
+              emissive={i % 2 === 0 ? '#b87828' : '#b06030'}
+              emissiveIntensity={0.35} /></mesh>
           <mesh position={[1.5, -0.18, 0]} rotation={[0, 0, -0.22]}>
             <capsuleGeometry args={[0.07, 0.55, 16, 32]} />
-            <meshStandardMaterial color="#38b0d0" roughness={0.3}
-              emissive="#2898b8" emissiveIntensity={0.3} /></mesh>
+            <meshStandardMaterial color="#e8b848" roughness={0.28} metalness={0.35}
+              emissive="#c89838" emissiveIntensity={0.3} /></mesh>
           <mesh position={[1.9, -0.25, 0]} rotation={[0, 0, -0.3]}>
             <capsuleGeometry args={[0.04, 0.35, 16, 32]} />
-            <meshStandardMaterial color="#50c8d8" roughness={0.28}
-              emissive="#38b0c0" emissiveIntensity={0.3} /></mesh>
+            <meshStandardMaterial color="#f0c850" roughness={0.25} metalness={0.4}
+              emissive="#d0a840" emissiveIntensity={0.3} /></mesh>
         </group>
       ))}
 

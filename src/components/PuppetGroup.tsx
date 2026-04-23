@@ -90,7 +90,7 @@ function makeIntroConfig(): PuppetConfig {
     outfit: '#a82020',
     outfitSecondary: '#c8a040',
     headwear: '#8b1a1a',
-    scale: 0.7,
+    scale: 0.95,
     animation: 'dance',
     animationSpeed: 1,
     animationOffset: 0,
@@ -116,10 +116,12 @@ function makeAutomationConfigs(): PuppetConfig[] {
       outfit: outfits[i % outfits.length],
       outfitSecondary: secondaries[i % secondaries.length],
       headwear: headwears[i % headwears.length],
-      scale: 0.55,
+      scale: 0.8,
       animation: anims[i % anims.length],
       animationSpeed: 0.9 + (i % 3) * 0.1,
       animationOffset: i * 1.2,
+      groupIndex: i,
+      groupTotal: cols,
     }
   })
 }
@@ -140,7 +142,7 @@ function makeAIConfigs(): PuppetConfig[] {
       outfit: '#2a3a6a',
       outfitSecondary: '#c4953a',
       headwear: '#c4953a',
-      scale: 0.63,
+      scale: 0.85,
       animation: anims[i % anims.length],
       animationSpeed: 0.8 + (i % 2) * 0.15,
       animationOffset: i * 1.5,

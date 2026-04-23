@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import PuppetStage from './components/PuppetStage'
 import StageUI from './components/StageUI'
 import ProjectDetailModal from './components/ProjectDetailModal'
@@ -14,6 +14,38 @@ function App() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [hoveredPuppet, setHoveredPuppet] = useState<string | null>(null)
   const [showOpeningText, setShowOpeningText] = useState(true)
+  const [musicPlaying, setMusicPlaying] = useState(true)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    const audio = new Audio('/bg-music.mp3')
+    audio.loop = true
+    audio.volume = 0.35
+    audioRef.current = audio
+    // Auto-play on first user interaction (browser requires gesture)
+    const tryPlay = () => {
+      audio.play().catch(() => {})
+    }
+    tryPlay()
+    document.addEventListener('click', tryPlay, { once: true })
+    document.addEventListener('keydown', tryPlay, { once: true })
+    return () => {
+      audio.pause(); audio.src = ''
+      document.removeEventListener('click', tryPlay)
+      document.removeEventListener('keydown', tryPlay)
+    }
+  }, [])
+
+  const toggleMusic = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    if (musicPlaying) {
+      audio.pause()
+    } else {
+      audio.play()
+    }
+    setMusicPlaying(!musicPlaying)
+  }, [musicPlaying])
 
   // Opening sequence: show all puppets dancing for 8 seconds, then transition
   useEffect(() => {
@@ -60,6 +92,22 @@ function App() {
           <div className="opening-skip">Click để bắt đầu</div>
         </div>
       )}
+
+      {/* Music toggle */}
+      <button
+        onClick={toggleMusic}
+        style={{
+          position: 'fixed', bottom: 20, right: 20, zIndex: 100,
+          width: 44, height: 44, borderRadius: '50%',
+          background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)',
+          color: '#f0e0c0', fontSize: 20, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(8px)',
+        }}
+        title={musicPlaying ? 'Tắt nhạc' : 'Bật nhạc'}
+      >
+        {musicPlaying ? '\u266B' : '\u266A'}
+      </button>
 
       {phase === 'performing' && (
         <>

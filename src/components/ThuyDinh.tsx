@@ -3,6 +3,9 @@ import { useFrame } from '@react-three/fiber'
 
 import * as THREE from 'three'
 
+const LERP_SPEEDS = [0.025, 0.03, 0.035, 0.028]
+const PLATFORM_WIDTH = 1.2
+
 /**
  * Vietnamese water puppet theater stage (Thủy Đình) — Thăng Long style.
  * Pink/magenta tiled roofs, gray stone pillars, red dragon panels,
@@ -71,11 +74,11 @@ export default function ThuyDinh() {
   const greenDark = useMemo(() => mat('#2a7040', 0.55, '#1a5830', 0.22), [])
 
   // Dark teal/green curtains — like reference
-  const curtainBlue = useMemo(() => mat('#1a3838', 0.65, '#0a2828', 0.12), [])
-  const curtainBlueDark = useMemo(() => mat('#0a1a20', 0.7, '#050e10', 0.08), [])
+  const curtainBlue = useMemo(() => mat('#c8986a', 0.55, '#a87850', 0.15), [])
+  const curtainBlueDark = useMemo(() => mat('#d8a878', 0.5, '#b89060', 0.12), [])
 
   // Backdrop & wood — lighter
-  const backdrop = useMemo(() => mat('#1a1a2a', 0.7, '#101020', 0.1), [])
+  const backdrop = useMemo(() => mat('#d8c8a8', 0.5, '#b8a888', 0.12), [])
   const wood = useMemo(() => mat('#5a4a30', 0.6, '#3a2a18', 0.12), [])
   const lattice = useMemo(() => mat('#90a0b8', 0.45, '#7888a0', 0.12), [])
 
@@ -89,7 +92,35 @@ export default function ThuyDinh() {
       {/* ===== CUNG ĐÌNH — Thăng Long water puppet theater (reference-accurate) ===== */}
       <group position={[0, -0.6, 0.5]} scale={[1.3, 1, 1]}>
 
+      {/* === DARK BACKDROP === */}
+      <mesh position={[0, 2.5, -1.2]} material={curtainBlueDark}>
+        <boxGeometry args={[8, 6, 0.08]} />
+      </mesh>
 
+      {/* === DARK TEAL CURTAINS hanging behind building === */}
+      {[-2.5, -1.5, -0.5, 0.5, 1.5, 2.5].map((x, i) => (
+        <mesh key={`crt-${i}`} position={[x, 2.5, -0.6]} material={curtainBlue}>
+          <boxGeometry args={[0.9, 3.5, 0.03]} />
+        </mesh>
+      ))}
+      {/* Curtain folds — slight depth variation */}
+      {[-2, -1, 0, 1, 2].map((x, i) => (
+        <mesh key={`cfold-${i}`} position={[x, 2.5, -0.55]} material={curtainBlueDark}>
+          <boxGeometry args={[0.15, 3.5, 0.02]} />
+        </mesh>
+      ))}
+
+      {/* === LOWER WALL — gray stone with red dragon band (like reference) === */}
+      {/* Main stone wall */}
+      <mesh position={[0, 1, 0.9]} material={stoneGray}>
+        <boxGeometry args={[6.2, 2, 0.12]} />
+      </mesh>
+      {/* Stone wall texture — vertical panel lines */}
+      {[-2.6, -1.3, 0, 1.3, 2.6].map((x, i) => (
+        <mesh key={`sline-${i}`} position={[x, 1, 0.97]} material={stoneDark}>
+          <boxGeometry args={[0.03, 1.9, 0.01]} />
+        </mesh>
+      ))}
 
       {/* RED DRAGON BAND — horizontal red strip with gold dragons (center of wall) */}
       <mesh position={[0, 1.1, 0.97]} material={redPanel}>
@@ -462,73 +493,29 @@ export default function ThuyDinh() {
           {/* Musicians on platform — 4 per side, styled like traditional illustration */}
           {side === -1 ? (
             <group position={[0, 1.25, 0]} scale={1.5}>
-              {/* 1. Nam — đàn nguyệt (standing, holding lute up) */}
+              {/* 1. Nam — đàn nguyệt (standing, holding lute) */}
               <group position={[0, 0, -1.3]}>
                 <MusicianV2 pose="standing" gender="male" facingAngle={Math.PI / 2}
-                  tunicColor="#1a1a28" pantsColor="#1a1a28" headwear="khan" />
-                {/* Đàn nguyệt — moon lute */}
-                <group position={[0.12, 0.35, 0.06]} rotation={[0, 0, 0.6]}>
-                  <mesh><cylinderGeometry args={[0.1, 0.1, 0.035, 24]} />
-                    <meshStandardMaterial color="#8a5a28" roughness={0.45} emissive="#5a3818" emissiveIntensity={0.15} /></mesh>
-                  <mesh position={[0, 0, 0]}><cylinderGeometry args={[0.085, 0.085, 0.02, 24]} />
-                    <meshStandardMaterial color="#d4a840" roughness={0.35} metalness={0.3} /></mesh>
-                  <mesh position={[0, 0.28, 0]}><boxGeometry args={[0.04, 0.38, 0.02]} />
-                    <meshStandardMaterial color="#5a3018" roughness={0.5} /></mesh>
-                  <mesh position={[0, 0.5, 0]}><boxGeometry args={[0.06, 0.06, 0.02]} />
-                    <meshStandardMaterial color="#4a2810" roughness={0.5} /></mesh>
-                  {/* Tuning pegs */}
-                  {[-0.03, 0.03].map((x, i) => (
-                    <mesh key={`peg-${i}`} position={[x, 0.48, 0.015]}><boxGeometry args={[0.008, 0.04, 0.008]} />
-                      <meshStandardMaterial color="#3a2010" roughness={0.6} /></mesh>
-                  ))}
-                  {/* Strings */}
-                  {[-0.008, 0.008].map((x, i) => (
-                    <mesh key={`str-${i}`} position={[x, 0.16, 0.02]}><boxGeometry args={[0.002, 0.5, 0.002]} />
-                      <meshStandardMaterial color="#c8c8c8" roughness={0.3} metalness={0.7} /></mesh>
-                  ))}
-                </group>
+                  tunicColor="#1a1a28" pantsColor="#1a1a28" headwear="khan"
+                  index={0} instrument="danNghiet" />
               </group>
               {/* 2. Nam — đàn nhị (sitting) */}
               <group position={[0, 0, -0.4]}>
                 <MusicianV2 pose="sitting" gender="male" facingAngle={Math.PI / 2}
-                  tunicColor="#1a1a28" pantsColor="#1a1a28" headwear="khan" />
-                {/* Đàn nhị — two-string fiddle */}
-                <group position={[0.15, 0.08, 0]}>
-                  <mesh><cylinderGeometry args={[0.05, 0.04, 0.1, 12]} />
-                    <meshStandardMaterial color="#6a3a18" roughness={0.5} emissive="#4a2810" emissiveIntensity={0.12} /></mesh>
-                  <mesh position={[0, 0.3, 0]}><cylinderGeometry args={[0.012, 0.012, 0.52, 32]} />
-                    <meshStandardMaterial color="#5a3018" roughness={0.5} /></mesh>
-                  <mesh position={[0, 0.58, 0]}><sphereGeometry args={[0.025, 32, 24]} />
-                    <meshStandardMaterial color="#4a2810" roughness={0.5} /></mesh>
-                  {/* Bow */}
-                  <mesh position={[0.08, 0.2, 0]} rotation={[0, 0, 0.2]}><cylinderGeometry args={[0.003, 0.003, 0.4, 6]} />
-                    <meshStandardMaterial color="#5a3818" roughness={0.5} /></mesh>
-                </group>
+                  tunicColor="#1a1a28" pantsColor="#1a1a28" headwear="khan"
+                  index={1} instrument="danNhi" />
               </group>
-              {/* 3. Nữ — sáo trúc (standing, with bag) */}
+              {/* 3. Nữ — sáo trúc (standing) */}
               <group position={[0, 0, 0.3]}>
                 <MusicianV2 pose="standing" gender="female" facingAngle={Math.PI / 2}
-                  tunicColor="#e8e0d8" pantsColor="#1a1a28" headwear="bun" />
-                {/* Sáo trúc — bamboo flute */}
-                <mesh position={[0.18, 0.42, 0.06]} rotation={[0, Math.PI / 2, 0.15]}>
-                  <cylinderGeometry args={[0.012, 0.012, 0.35, 32]} />
-                  <meshStandardMaterial color="#b8a050" roughness={0.4} emissive="#887830" emissiveIntensity={0.15} />
-                </mesh>
-                {/* Small shoulder bag */}
-                <group position={[0.04, 0.12, 0.04]}>
-                  <mesh><boxGeometry args={[0.08, 0.07, 0.04]} />
-                    <meshStandardMaterial color="#8a6838" roughness={0.55} emissive="#5a4820" emissiveIntensity={0.1} /></mesh>
-                  <mesh position={[0, 0.04, 0]}><boxGeometry args={[0.09, 0.015, 0.045]} />
-                    <meshStandardMaterial color="#6a5028" roughness={0.5} /></mesh>
-                  {/* Bag strap */}
-                  <mesh position={[-0.02, 0.18, -0.01]} rotation={[0, 0, -0.3]}><boxGeometry args={[0.015, 0.25, 0.005]} />
-                    <meshStandardMaterial color="#6a5028" roughness={0.5} /></mesh>
-                </group>
+                  tunicColor="#e8e0d8" pantsColor="#1a1a28" headwear="bun"
+                  index={2} instrument="saoTruoc" />
               </group>
               {/* 4. Nam — ca sĩ/chỉ huy (standing, singing) */}
               <group position={[0, 0, 1]}>
                 <MusicianV2 pose="standing" gender="male" facingAngle={Math.PI / 2}
-                  tunicColor="#1a2a3a" pantsColor="#1a1a28" headwear="none" armsOut />
+                  tunicColor="#1a2a3a" pantsColor="#1a1a28" headwear="none" armsOut
+                  index={3} />
               </group>
             </group>
           ) : (
@@ -536,12 +523,14 @@ export default function ThuyDinh() {
               {/* 1. Nữ — ca sĩ (standing, singing) */}
               <group position={[0, 0, -1.3]}>
                 <MusicianV2 pose="standing" gender="female" facingAngle={-Math.PI / 2}
-                  tunicColor="#1a1a28" pantsColor="#1a1a28" headwear="bun" armsOut />
+                  tunicColor="#1a1a28" pantsColor="#1a1a28" headwear="bun" armsOut
+                  index={4} />
               </group>
               {/* 2. Nam — trống (standing, with drum on tripod) */}
               <group position={[0, 0, -0.4]}>
                 <MusicianV2 pose="standing" gender="male" facingAngle={-Math.PI / 2}
-                  tunicColor="#1a1a28" pantsColor="#1a1a28" headwear="khan" />
+                  tunicColor="#1a1a28" pantsColor="#1a1a28" headwear="khan"
+                  index={5} />
                 {/* Trống — drum on tripod stand */}
                 <group position={[-0.2, 0.08, 0]}>
                   <mesh><cylinderGeometry args={[0.07, 0.06, 0.1, 32]} />
@@ -561,43 +550,29 @@ export default function ThuyDinh() {
                     </mesh>
                   ))}
                 </group>
-                {/* Drum sticks in hands */}
-                <mesh position={[-0.16, 0.28, 0.06]} rotation={[0.5, 0, -0.3]}>
-                  <cylinderGeometry args={[0.005, 0.005, 0.18, 6]} />
-                  <meshStandardMaterial color="#5a3818" roughness={0.5} />
-                </mesh>
+                {/* Drum sticks */}
+                <group>
+                  <mesh position={[-0.22, 0.26, 0.06]} rotation={[0.5, 0, -0.3]}>
+                    <cylinderGeometry args={[0.005, 0.005, 0.18, 6]} />
+                    <meshStandardMaterial color="#5a3818" roughness={0.5} />
+                  </mesh>
+                  <mesh position={[-0.18, 0.26, 0.06]} rotation={[0.5, 0, -0.2]}>
+                    <cylinderGeometry args={[0.005, 0.005, 0.18, 6]} />
+                    <meshStandardMaterial color="#5a3818" roughness={0.5} />
+                  </mesh>
+                </group>
               </group>
-              {/* 3. Nam — đàn tỳ bà (standing, holding up) */}
+              {/* 3. Nam — đàn tỳ bà (standing) */}
               <group position={[0, 0, 0.3]}>
                 <MusicianV2 pose="standing" gender="male" facingAngle={-Math.PI / 2}
-                  tunicColor="#1a1a28" pantsColor="#1a1a28" headwear="khan" />
-                {/* Đàn tỳ bà — pipa lute */}
-                <group position={[-0.14, 0.3, 0.05]} rotation={[0, 0, -0.4]}>
-                  <mesh scale={[1, 1.3, 0.3]}><sphereGeometry args={[0.1, 32, 24]} />
-                    <meshStandardMaterial color="#b07830" roughness={0.4} emissive="#805020" emissiveIntensity={0.15} /></mesh>
-                  <mesh position={[0, 0.22, 0]}><boxGeometry args={[0.04, 0.22, 0.02]} />
-                    <meshStandardMaterial color="#6a4020" roughness={0.5} /></mesh>
-                  <mesh position={[0, 0.35, 0]}><boxGeometry args={[0.05, 0.05, 0.015]} />
-                    <meshStandardMaterial color="#4a2810" roughness={0.5} /></mesh>
-                  {[-0.01, 0.01].map((x, i) => (
-                    <mesh key={`pstr-${i}`} position={[x, 0.1, 0.018]}><boxGeometry args={[0.002, 0.4, 0.002]} />
-                      <meshStandardMaterial color="#c8c8c8" roughness={0.3} metalness={0.7} /></mesh>
-                  ))}
-                </group>
+                  tunicColor="#1a1a28" pantsColor="#1a1a28" headwear="khan"
+                  index={6} instrument="danTyBa" />
               </group>
               {/* 4. Nữ — khăn hồng, cầm dải lụa */}
               <group position={[0, 0, 1]}>
                 <MusicianV2 pose="standing" gender="female" facingAngle={-Math.PI / 2}
-                  tunicColor="#1a1a28" pantsColor="#1a1a28" headwear="pink-wrap" />
-                {/* Pink silk ribbon */}
-                <mesh position={[-0.22, 0.3, 0.04]} rotation={[0.2, 0, -0.5]}>
-                  <boxGeometry args={[0.04, 0.3, 0.008]} />
-                  <meshStandardMaterial color="#e8889a" roughness={0.5} emissive="#c06878" emissiveIntensity={0.15} side={THREE.DoubleSide} />
-                </mesh>
-                <mesh position={[-0.28, 0.18, 0.06]} rotation={[0.3, 0.2, -0.8]}>
-                  <boxGeometry args={[0.035, 0.2, 0.006]} />
-                  <meshStandardMaterial color="#e898a8" roughness={0.5} emissive="#c07888" emissiveIntensity={0.12} side={THREE.DoubleSide} />
-                </mesh>
+                  tunicColor="#1a1a28" pantsColor="#1a1a28" headwear="pink-wrap"
+                  index={7} instrument="silk" />
               </group>
             </group>
           )}
@@ -748,7 +723,7 @@ function WingFringe({ x, z, greenFringe }: { x: number; z: number; greenFringe: 
 }
 
 /** Musician figure — traditional Vietnamese illustration style with cute round face */
-function MusicianV2({ pose, gender, facingAngle, tunicColor, pantsColor, headwear, armsOut }: {
+function MusicianV2({ pose, gender, facingAngle, tunicColor, pantsColor, headwear, armsOut, index = 0, instrument = 'none' }: {
   pose: 'standing' | 'sitting'
   gender: 'male' | 'female'
   facingAngle: number
@@ -756,6 +731,8 @@ function MusicianV2({ pose, gender, facingAngle, tunicColor, pantsColor, headwea
   pantsColor: string
   headwear: 'khan' | 'bun' | 'pink-wrap' | 'none'
   armsOut?: boolean
+  index?: number
+  instrument?: 'none' | 'danNghiet' | 'danNhi' | 'saoTruoc' | 'danTyBa' | 'silk'
 }) {
   const isFemale = gender === 'female'
   const isStanding = pose === 'standing'
@@ -764,13 +741,24 @@ function MusicianV2({ pose, gender, facingAngle, tunicColor, pantsColor, headwea
   const groupRef = useRef<THREE.Group>(null)
   const seed = useMemo(() => Math.random() * 100, [])
 
+  // Autonomous movement within platform bounds
+  const baseXRef = useRef(0)
+  const currentXRef = useRef(0)
+  const timeOffset = useMemo(() => seed * 0.1, [seed])
+
   useFrame(({ clock }) => {
     if (!groupRef.current) return
-    const t = clock.getElapsedTime() + seed
-    // Body sway — playing music, 2x speed
+    const t = clock.getElapsedTime() + timeOffset
+
+    // Autonomous smooth movement within platform bounds
+    const targetX = Math.sin(t * 0.4 + index * 1.5) * 0.5 * PLATFORM_WIDTH
+    currentXRef.current = THREE.MathUtils.lerp(currentXRef.current, targetX, 0.02)
+    groupRef.current.position.x = currentXRef.current
+
+    // Body sway — playing music
     groupRef.current.rotation.y = facingAngle + Math.sin(t * 1.6) * 0.1
     groupRef.current.rotation.z = Math.sin(t * 2.4 + 1) * 0.05
-    // Head bob — 2x speed
+    // Head bob
     if (groupRef.current.children[0]) {
       groupRef.current.children[0].position.y = (isStanding ? 0.54 : 0.52) + Math.sin(t * 3) * 0.015
     }
@@ -929,25 +917,102 @@ function MusicianV2({ pose, gender, facingAngle, tunicColor, pantsColor, headwea
           </mesh>
         </>
       ) : (
-        /* Normal arms — reaching toward instrument */
+        /* Normal arms — holding instrument */
         <>
-          <mesh position={[-0.11, 0.33, 0.04]} rotation={[0.3, 0, -0.35]}>
-            <capsuleGeometry args={[0.025, 0.14, 12, 24]} />
-            <meshStandardMaterial color={tunicColor} roughness={0.6} emissive={tunicColor} emissiveIntensity={0.06} />
-          </mesh>
-          <mesh position={[0.11, 0.33, 0.04]} rotation={[0.3, 0, 0.35]}>
-            <capsuleGeometry args={[0.025, 0.14, 12, 24]} />
-            <meshStandardMaterial color={tunicColor} roughness={0.6} emissive={tunicColor} emissiveIntensity={0.06} />
-          </mesh>
-          {/* Hands */}
-          <mesh position={[-0.17, 0.24, 0.08]}>
-            <sphereGeometry args={[0.02, 32, 24]} />
-            <meshStandardMaterial color={skinColor} roughness={0.5} />
-          </mesh>
-          <mesh position={[0.17, 0.24, 0.08]}>
-            <sphereGeometry args={[0.02, 32, 24]} />
-            <meshStandardMaterial color={skinColor} roughness={0.5} />
-          </mesh>
+          {/* Left arm */}
+          <group position={[-0.11, 0.33, 0.04]} rotation={[0.3, 0, -0.35]}>
+            <mesh>
+              <capsuleGeometry args={[0.025, 0.14, 12, 24]} />
+              <meshStandardMaterial color={tunicColor} roughness={0.6} emissive={tunicColor} emissiveIntensity={0.06} />
+            </mesh>
+            {/* Left hand */}
+            <mesh position={[-0.06, -0.1, 0.04]}>
+              <sphereGeometry args={[0.02, 32, 24]} />
+              <meshStandardMaterial color={skinColor} roughness={0.5} />
+            </mesh>
+          </group>
+          {/* Right arm with instrument */}
+          <group position={[0.11, 0.33, 0.04]} rotation={[0.3, 0, 0.35]}>
+            <mesh>
+              <capsuleGeometry args={[0.025, 0.14, 12, 24]} />
+              <meshStandardMaterial color={tunicColor} roughness={0.6} emissive={tunicColor} emissiveIntensity={0.06} />
+            </mesh>
+            {/* Right hand */}
+            <mesh position={[0.06, -0.1, 0.04]}>
+              <sphereGeometry args={[0.02, 32, 24]} />
+              <meshStandardMaterial color={skinColor} roughness={0.5} />
+            </mesh>
+            {/* INSTRUMENTS in right hand */}
+            {instrument === 'danNghiet' && (
+              /* Đàn nguyệt — moon lute held in hand */
+              <group position={[0.08, -0.12, 0.06]} rotation={[0.3, 0, 0.8]}>
+                <mesh><cylinderGeometry args={[0.1, 0.1, 0.035, 24]} />
+                  <meshStandardMaterial color="#8a5a28" roughness={0.45} emissive="#5a3818" emissiveIntensity={0.15} /></mesh>
+                <mesh position={[0, 0, 0]}><cylinderGeometry args={[0.085, 0.085, 0.02, 24]} />
+                  <meshStandardMaterial color="#d4a840" roughness={0.35} metalness={0.3} /></mesh>
+                <mesh position={[0, 0.28, 0]}><boxGeometry args={[0.04, 0.38, 0.02]} />
+                  <meshStandardMaterial color="#5a3018" roughness={0.5} /></mesh>
+                <mesh position={[0, 0.5, 0]}><boxGeometry args={[0.06, 0.06, 0.02]} />
+                  <meshStandardMaterial color="#4a2810" roughness={0.5} /></mesh>
+                {[-0.03, 0.03].map((x, i) => (
+                  <mesh key={`peg-${i}`} position={[x, 0.48, 0.015]}><boxGeometry args={[0.008, 0.04, 0.008]} />
+                    <meshStandardMaterial color="#3a2010" roughness={0.6} /></mesh>
+                ))}
+                {[-0.008, 0.008].map((x, i) => (
+                  <mesh key={`str-${i}`} position={[x, 0.16, 0.02]}><boxGeometry args={[0.002, 0.5, 0.002]} />
+                    <meshStandardMaterial color="#c8c8c8" roughness={0.3} metalness={0.7} /></mesh>
+                ))}
+              </group>
+            )}
+            {instrument === 'danNhi' && (
+              /* Đàn nhị — two-string fiddle */
+              <group position={[0.05, -0.14, 0.08]} rotation={[0.5, 0.3, 0.2]}>
+                <mesh><cylinderGeometry args={[0.05, 0.04, 0.1, 12]} />
+                  <meshStandardMaterial color="#6a3a18" roughness={0.5} emissive="#4a2810" emissiveIntensity={0.12} /></mesh>
+                <mesh position={[0, 0.3, 0]}><cylinderGeometry args={[0.012, 0.012, 0.52, 32]} />
+                  <meshStandardMaterial color="#5a3018" roughness={0.5} /></mesh>
+                <mesh position={[0, 0.58, 0]}><sphereGeometry args={[0.025, 32, 24]} />
+                  <meshStandardMaterial color="#4a2810" roughness={0.5} /></mesh>
+                <mesh position={[0.08, 0.2, 0]} rotation={[0, 0, 0.2]}><cylinderGeometry args={[0.003, 0.003, 0.4, 6]} />
+                  <meshStandardMaterial color="#5a3818" roughness={0.5} /></mesh>
+              </group>
+            )}
+            {instrument === 'saoTruoc' && (
+              /* Sáo trúc — bamboo flute */
+              <mesh position={[0.04, -0.08, 0.1]} rotation={[0.4, Math.PI / 2, 0.2]}>
+                <cylinderGeometry args={[0.012, 0.012, 0.35, 32]} />
+                <meshStandardMaterial color="#b8a050" roughness={0.4} emissive="#887830" emissiveIntensity={0.15} />
+              </mesh>
+            )}
+            {instrument === 'danTyBa' && (
+              /* Đàn tỳ bà — pipa lute */
+              <group position={[0.06, -0.1, 0.06]} rotation={[0.3, 0.2, -0.4]}>
+                <mesh scale={[1, 1.3, 0.3]}><sphereGeometry args={[0.1, 32, 24]} />
+                  <meshStandardMaterial color="#b07830" roughness={0.4} emissive="#805020" emissiveIntensity={0.15} /></mesh>
+                <mesh position={[0, 0.22, 0]}><boxGeometry args={[0.04, 0.22, 0.02]} />
+                  <meshStandardMaterial color="#6a4020" roughness={0.5} /></mesh>
+                <mesh position={[0, 0.35, 0]}><boxGeometry args={[0.05, 0.05, 0.015]} />
+                  <meshStandardMaterial color="#4a2810" roughness={0.5} /></mesh>
+                {[-0.01, 0.01].map((x, i) => (
+                  <mesh key={`pstr-${i}`} position={[x, 0.1, 0.018]}><boxGeometry args={[0.002, 0.4, 0.002]} />
+                    <meshStandardMaterial color="#c8c8c8" roughness={0.3} metalness={0.7} /></mesh>
+                ))}
+              </group>
+            )}
+            {instrument === 'silk' && (
+              /* Silk ribbon */
+              <>
+                <mesh position={[0.04, -0.1, 0.08]} rotation={[0.2, 0.2, -0.5]}>
+                  <boxGeometry args={[0.04, 0.3, 0.008]} />
+                  <meshStandardMaterial color="#e8889a" roughness={0.5} emissive="#c06878" emissiveIntensity={0.15} side={THREE.DoubleSide} />
+                </mesh>
+                <mesh position={[0.06, -0.14, 0.1]} rotation={[0.3, 0.2, -0.8]}>
+                  <boxGeometry args={[0.035, 0.2, 0.006]} />
+                  <meshStandardMaterial color="#e898a8" roughness={0.5} emissive="#c07888" emissiveIntensity={0.12} side={THREE.DoubleSide} />
+                </mesh>
+              </>
+            )}
+          </group>
         </>
       )}
     </group>
