@@ -16,6 +16,10 @@ Giao diện được xây dựng với Three.js, React và thư viện animation
 
 **Bản hiện tại đang trong quá trình chỉnh sửa và phát triển thêm.** Một số tính năng có thể chưa hoàn thiện, nội dung có thể thay đổi.
 
+## Video Demo
+
+Xem video demo: https://github.com/lamtuyen120903/Ladingpage-3D-Vietnamese-water-puppets/releases/tag/v1.0.0
+
 ## Công nghệ sử dụng
 
 - React + TypeScript
